@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AI Call Manager</title>
+<meta name="theme-color" content="#0f1630">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237c5cff'/%3E%3Ctext x='50' y='70' font-size='56' text-anchor='middle'%3E%F0%9F%93%9E%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#0b1026;--card:#151c3a;--tx:#eef0ff;--mu:#a9b0d6;--ac:#8b6cff;--bd:#2a3366;--ok:#34d399;--wr:#fbbf24;--er:#f87171;color-scheme:dark}
+[data-t=light]{--bg:#f3f4ff;--card:#fff;--tx:#14183a;--mu:#555b85;--ac:#5b3fe0;--bd:#d9dcf3;--ok:#047857;--wr:#92400e;--er:#b91c1c;color-scheme:light}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;font:16px/1.5 system-ui,"Noto Sans Gujarati","Noto Sans Devanagari",sans-serif;background:var(--bg);color:var(--tx);padding:0 0 88px}
+header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:var(--bg);border-bottom:1px solid var(--bd)}
+.lg{flex:1;display:flex;gap:8px;align-items:center;font-size:18px}.lg i{font-style:normal;background:var(--ac);border-radius:12px;padding:4px 8px}
+main{padding:14px;max-width:640px;margin:auto}
+h2{margin:6px 0 12px;font-size:22px}h3{margin:16px 0 8px;font-size:16px;color:var(--mu)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px;margin-bottom:12px;animation:in .2s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}}@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+label{display:block;margin:10px 0;font-size:14px;color:var(--mu)}
+input,select,textarea{width:100%;min-height:48px;margin-top:4px;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:96px}
+button,.b,.g{min-height:48px;padding:10px 16px;border-radius:14px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.b{background:var(--ac);border-color:var(--ac);color:#fff}.dg{border-color:var(--er);color:var(--er)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.row>*{flex:1 1 140px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stats .card b{font-size:30px;display:block}
+.mu{color:var(--mu);font-size:14px}.pre{white-space:pre-line}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:13px;border:1px solid currentColor}
+.p0{color:var(--mu)}.p1{color:var(--wr)}.p2{color:var(--er)}.ok{color:var(--ok)}
+.lk{width:100%;justify-content:flex-start;margin-bottom:10px;font-size:17px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;flex-direction:column;gap:0;border:0;border-radius:0;background:none;font-size:12px;min-height:60px;color:var(--mu)}
+nav button span{font-size:22px}nav .on{color:var(--ac)}
+dialog{width:min(92vw,560px);border:1px solid var(--bd);border-radius:20px;background:var(--card);color:var(--tx);padding:16px;max-height:90vh}
+dialog::backdrop{background:#000a}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ac);color:#fff;padding:10px 18px;border-radius:99px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="lg"><i>📞</i><b>AI Call Manager</b></div>
+  <select id="hl" aria-label="Language" style="width:auto;margin:0"><option value="gu">ગુજરાતી</option><option value="hi">हिन्दी</option><option value="en">English</option></select>
+  <button id="th" data-a="theme" aria-label="Theme" style="min-height:44px;padding:6px 12px">🌓</button>
+</header>
+<main id="v"></main>
+<nav id="nav"></nav>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status"></div>
+
+<script>
+/* ================= Translations (gu / hi / en) ================= */
+const L = {
+en:{home:'Home',callers:'Callers',reply:'Replies',follow:'Follow-ups',more:'More',total:'Saved callers',due:'Follow-ups due',recent:'Recent call notes',quick:'+ Quick Add Caller',search:'Search callers…',empty:'Nothing here yet.',name:'Caller name',phone:'Phone number',when:'Call date & time',reason:'Reason for calling',prio:'Priority',p0:'Normal',p1:'Important',p2:'Urgent',notes:'Personal notes',save:'Save',cancel:'Cancel',edit:'Edit',del:'Delete',delQ:'Delete this entry?',sit:'Caller situation',tone:'Tone',tpol:'Polite',tfri:'Friendly',tpro:'Professional',lang:'Language',gen:'Generate reply',copy:'Copy Reply',clear:'Clear',copied:'Copied!',local:'Local reply assistant: built-in templates, not a live AI model.',speak:'🔊 Read aloud',mic:'🎤 Dictate',micInfo:'Dictation uses your browser’s speech service, which may send audio to an external server and needs internet. The microphone starts only when you tap the button.',un:'Unable to answer',la:'Call me later',ms:'Please send a message',cb:'I will call you back',uk:'Unknown caller',bz:'Business / work call',fuNote:'Reminder note',fuAt:'Follow-up date & time',fuCaller:'Related caller (optional)',fuAdd:'Add follow-up',done:'Mark complete',over:'Overdue',upc:'Upcoming',fin:'Completed',notif:'Enable notifications',notifInfo:'Notifications appear only if you allow them, and may not fire if the browser is closed or Android restricts background activity. Keep the app open for reliable alerts.',missed:'Missed-call replies',missedInfo:'Pick who called, choose a message, then send it yourself by SMS or WhatsApp. Nothing is sent automatically.',pick:'Choose a saved caller',other:'Other number',msg:'Message',sms:'Send SMS',wa:'WhatsApp',callb:'Call back',addFu:'Add follow-up',auto:'Auto-Answer',autoSt:'Auto-answer status',unav:'Unavailable in Web App',autoWhy:'Chrome and installed web apps (PWAs) cannot answer Vi SIM calls, read Android call logs or access live cellular call audio. This app never claims to. Use the missed-call replies instead.',explore:'Explore Android Auto-Answer',exploreInfo:'Real cellular auto-answer needs a compatible native Android app (dialer / telephony implementation) with the right Android permissions, and it must follow Google Play and local-law rules.\n\n• It needs permissions such as ANSWER_PHONE_CALLS and READ_PHONE_STATE, and may need to be the default phone app.\n• Android restricts call-audio recording; recording needs clear consent from everyone on the call.\n• Call forwarding and SIM settings are controlled by you and your carrier. This app never changes them silently.\n• Ask a native Android developer, or check your carrier’s free voicemail / missed-call services.',priv:'Privacy & Data',privInfo:'Everything is stored only in this browser (localStorage). No servers, analytics, trackers or ads. Do not save passwords, OTPs, bank details or other authentication info. Clearing browser data may erase your records, so export a backup regularly.',exp:'Export Data (JSON)',imp:'Import Data (JSON)',wipe:'Delete All Data',wipeQ:'Permanently delete ALL saved data? This cannot be undone.',wipeQ2:'Final confirmation: really delete everything?',bad:'Invalid file.',impQ:'Replace current data with the imported data?',ok:'Done.',sens:'Please do not save passwords, OTPs or bank details.',badPh:'Enter a valid phone number.',req:'Name is required.',err:'Could not save (storage full?)',tel:'Call',badDt:'Choose a valid date and time.',noFu:'Write a note and choose a date.'},
+hi:{home:'होम',callers:'कॉलर',reply:'जवाब',follow:'फ़ॉलो-अप',more:'और',total:'सेव किए कॉलर',due:'बकाया फ़ॉलो-अप',recent:'हाल के कॉल नोट्स',quick:'+ कॉलर जोड़ें',search:'कॉलर खोजें…',empty:'अभी कुछ नहीं है।',name:'कॉलर का नाम',phone:'फ़ोन नंबर',when:'कॉल की तारीख़ व समय',reason:'कॉल का कारण',prio:'प्राथमिकता',p0:'सामान्य',p1:'महत्वपूर्ण',p2:'अत्यावश्यक',notes:'निजी नोट्स',save:'सेव करें',cancel:'रद्द करें',edit:'बदलें',del:'हटाएँ',delQ:'यह एंट्री हटानी है?',sit:'कॉल की स्थिति',tone:'लहजा',tpol:'विनम्र',tfri:'दोस्ताना',tpro:'पेशेवर',lang:'भाषा',gen:'जवाब बनाएँ',copy:'जवाब कॉपी करें',clear:'साफ़ करें',copied:'कॉपी हो गया!',local:'लोकल रिप्लाई असिस्टेंट: बने-बनाए टेम्पलेट, लाइव AI मॉडल नहीं।',speak:'🔊 सुनें',mic:'🎤 बोलकर लिखें',micInfo:'बोलकर लिखने की सुविधा ब्राउज़र की स्पीच सेवा इस्तेमाल करती है, जो ऑडियो बाहरी सर्वर पर भेज सकती है और इंटरनेट माँगती है। माइक तभी चालू होगा जब आप बटन दबाएँगे।',un:'कॉल नहीं उठा पाना',la:'बाद में कॉल करें',ms:'संदेश भेजें',cb:'मैं वापस कॉल करूँगा/करूँगी',uk:'अनजान कॉलर',bz:'बिज़नेस / काम की कॉल',fuNote:'रिमाइंडर नोट',fuAt:'फ़ॉलो-अप की तारीख़ व समय',fuCaller:'संबंधित कॉलर (वैकल्पिक)',fuAdd:'फ़ॉलो-अप जोड़ें',done:'पूरा हुआ',over:'समय निकल चुका',upc:'आने वाले',fin:'पूरे हुए',notif:'नोटिफ़िकेशन चालू करें',notifInfo:'नोटिफ़िकेशन तभी दिखेंगे जब आप अनुमति देंगे; ब्राउज़र बंद होने या एंड्रॉइड की बैकग्राउंड पाबंदी से वे न आएँ, ऐसा हो सकता है। भरोसेमंद अलर्ट के लिए ऐप खुला रखें।',missed:'मिस्ड कॉल जवाब',missedInfo:'चुनें किसने कॉल किया, संदेश चुनें और SMS या WhatsApp से खुद भेजें। कुछ भी अपने-आप नहीं भेजा जाता।',pick:'सेव किया कॉलर चुनें',other:'दूसरा नंबर',msg:'संदेश',sms:'SMS भेजें',wa:'WhatsApp',callb:'वापस कॉल करें',addFu:'फ़ॉलो-अप जोड़ें',auto:'ऑटो-आंसर',autoSt:'ऑटो-आंसर स्थिति',unav:'वेब ऐप में उपलब्ध नहीं',autoWhy:'Chrome और इंस्टॉल किए वेब ऐप (PWA) Vi SIM की कॉल नहीं उठा सकते, एंड्रॉइड कॉल लॉग नहीं पढ़ सकते और लाइव सेल्युलर कॉल ऑडियो तक नहीं पहुँच सकते। यह ऐप ऐसा दावा नहीं करता। इसके बजाय मिस्ड कॉल जवाब इस्तेमाल करें।',explore:'एंड्रॉइड ऑटो-आंसर जानें',exploreInfo:'असली सेल्युलर ऑटो-आंसर के लिए संगत नेटिव एंड्रॉइड ऐप (डायलर / टेलीफ़ोनी इम्प्लीमेंटेशन), सही एंड्रॉइड अनुमतियाँ और Google Play व स्थानीय कानून के नियमों का पालन ज़रूरी है।\n\n• ANSWER_PHONE_CALLS और READ_PHONE_STATE जैसी अनुमतियाँ चाहिए; डिफ़ॉल्ट फ़ोन ऐप भी बनना पड़ सकता है।\n• एंड्रॉइड कॉल ऑडियो रिकॉर्डिंग पर पाबंदी लगाता है; रिकॉर्डिंग के लिए कॉल के सभी लोगों की स्पष्ट सहमति चाहिए।\n• कॉल फ़ॉरवर्डिंग और SIM सेटिंग आप और आपका कैरियर नियंत्रित करते हैं। यह ऐप उन्हें चुपचाप कभी नहीं बदलता।\n• किसी नेटिव एंड्रॉइड डेवलपर से पूछें, या अपने कैरियर की मुफ़्त वॉइसमेल / मिस्ड-कॉल सेवाएँ देखें।',priv:'प्राइवेसी और डेटा',privInfo:'सब कुछ सिर्फ़ इसी ब्राउज़र (localStorage) में रहता है। कोई सर्वर, एनालिटिक्स, ट्रैकर या विज्ञापन नहीं। पासवर्ड, OTP, बैंक विवरण या प्रमाणीकरण की जानकारी सेव न करें। ब्राउज़र डेटा साफ़ करने पर रिकॉर्ड मिट सकते हैं, इसलिए नियमित बैकअप एक्सपोर्ट करें।',exp:'डेटा एक्सपोर्ट (JSON)',imp:'डेटा इम्पोर्ट (JSON)',wipe:'सारा डेटा हटाएँ',wipeQ:'सारा सेव डेटा हमेशा के लिए हटाना है? यह वापस नहीं होगा।',wipeQ2:'अंतिम पुष्टि: क्या सच में सब हटाना है?',bad:'फ़ाइल सही नहीं है।',impQ:'मौजूदा डेटा की जगह इम्पोर्ट किया डेटा रखें?',ok:'हो गया।',sens:'कृपया पासवर्ड, OTP या बैंक विवरण सेव न करें।',badPh:'सही फ़ोन नंबर लिखें।',req:'नाम ज़रूरी है।',err:'सेव नहीं हो सका (स्टोरेज भरा?)',tel:'कॉल',badDt:'सही तारीख़ और समय चुनें।',noFu:'नोट लिखें और तारीख़ चुनें।'},
+gu:{home:'હોમ',callers:'કૉલર',reply:'જવાબ',follow:'ફૉલો-અપ',more:'વધુ',total:'સેવ કરેલા કૉલર',due:'બાકી ફૉલો-અપ',recent:'તાજેતરની કૉલ નોંધ',quick:'+ કૉલર ઉમેરો',search:'કૉલર શોધો…',empty:'હજી કંઈ નથી.',name:'કૉલરનું નામ',phone:'ફોન નંબર',when:'કૉલની તારીખ અને સમય',reason:'કૉલનું કારણ',prio:'પ્રાથમિકતા',p0:'સામાન્ય',p1:'મહત્વપૂર્ણ',p2:'અતિ જરૂરી',notes:'અંગત નોંધ',save:'સેવ કરો',cancel:'રદ કરો',edit:'ફેરફાર',del:'કાઢી નાખો',delQ:'આ નોંધ કાઢી નાખવી છે?',sit:'કૉલની સ્થિતિ',tone:'ટોન',tpol:'નમ્ર',tfri:'મૈત્રીપૂર્ણ',tpro:'વ્યાવસાયિક',lang:'ભાષા',gen:'જવાબ બનાવો',copy:'જવાબ કૉપી કરો',clear:'સાફ કરો',copied:'કૉપી થઈ ગયું!',local:'લોકલ રિપ્લાય આસિસ્ટન્ટ: બિલ્ટ-ઇન ટેમ્પ્લેટ, લાઇવ AI મૉડલ નથી.',speak:'🔊 સાંભળો',mic:'🎤 બોલીને લખો',micInfo:'બોલીને લખવાની સુવિધા બ્રાઉઝરની સ્પીચ સેવા વાપરે છે, જે ઑડિયો બહારના સર્વર પર મોકલી શકે છે અને ઇન્ટરનેટ માંગે છે. બટન દબાવો ત્યારે જ માઇક ચાલુ થશે.',un:'કૉલ ઉપાડી ન શકવો',la:'પછી ફોન કરો',ms:'સંદેશ મોકલો',cb:'હું પાછો ફોન કરીશ',uk:'અજાણ્યો કૉલર',bz:'બિઝનેસ / કામનો કૉલ',fuNote:'રિમાઇન્ડર નોંધ',fuAt:'ફૉલો-અપ તારીખ અને સમય',fuCaller:'સંબંધિત કૉલર (વૈકલ્પિક)',fuAdd:'ફૉલો-અપ ઉમેરો',done:'પૂર્ણ થયું',over:'સમય વીતી ગયો',upc:'આવનારા',fin:'પૂર્ણ થયેલા',notif:'નોટિફિકેશન ચાલુ કરો',notifInfo:'નોટિફિકેશન ત્યારે જ દેખાશે જ્યારે તમે પરવાનગી આપો; બ્રાઉઝર બંધ હોય અથવા Android બૅકગ્રાઉન્ડ પર પ્રતિબંધ મૂકે તો તે ન આવે એવું બની શકે. ભરોસાપાત્ર એલર્ટ માટે ઍપ ખુલ્લી રાખો.',missed:'મિસ્ડ કૉલના જવાબ',missedInfo:'કોણે કૉલ કર્યો તે પસંદ કરો, સંદેશ પસંદ કરો અને SMS અથવા WhatsApp થી જાતે મોકલો. કંઈ આપમેળે મોકલાતું નથી.',pick:'સેવ કરેલો કૉલર પસંદ કરો',other:'બીજો નંબર',msg:'સંદેશ',sms:'SMS મોકલો',wa:'WhatsApp',callb:'પાછો ફોન કરો',addFu:'ફૉલો-અપ ઉમેરો',auto:'ઑટો-આન્સર',autoSt:'ઑટો-આન્સર સ્થિતિ',unav:'વેબ ઍપમાં ઉપલબ્ધ નથી',autoWhy:'Chrome અને ઇન્સ્ટૉલ કરેલી વેબ ઍપ (PWA) Vi SIM ના કૉલ ઉપાડી શકતી નથી, Android કૉલ લૉગ વાંચી શકતી નથી અને લાઇવ સેલ્યુલર કૉલ ઑડિયો સુધી પહોંચી શકતી નથી. આ ઍપ એવો દાવો કરતી નથી. તેના બદલે મિસ્ડ કૉલના જવાબ વાપરો.',explore:'Android ઑટો-આન્સર વિશે જાણો',exploreInfo:'સાચું સેલ્યુલર ઑટો-આન્સર માટે સુસંગત નેટિવ Android ઍપ (ડાયલર / ટેલિફોની અમલીકરણ), યોગ્ય Android પરવાનગીઓ અને Google Play તથા સ્થાનિક કાયદાના નિયમોનું પાલન જરૂરી છે.\n\n• ANSWER_PHONE_CALLS અને READ_PHONE_STATE જેવી પરવાનગીઓ જોઈએ; ડિફૉલ્ટ ફોન ઍપ બનવું પણ પડી શકે.\n• Android કૉલ ઑડિયો રેકૉર્ડિંગ પર પ્રતિબંધ મૂકે છે; રેકૉર્ડિંગ માટે કૉલના બધા લોકોની સ્પષ્ટ સંમતિ જોઈએ.\n• કૉલ ફૉરવર્ડિંગ અને SIM સેટિંગ તમે અને તમારો કૅરિયર નિયંત્રિત કરો છો. આ ઍપ તેમને ચૂપચાપ ક્યારેય બદલતી નથી.\n• કોઈ નેટિવ Android ડેવલપરને પૂછો, અથવા તમારા કૅરિયરની મફત વૉઇસમેઇલ / મિસ્ડ-કૉલ સેવાઓ તપાસો.',priv:'ગોપનીયતા અને ડેટા',privInfo:'બધું ફક્ત આ બ્રાઉઝરમાં (localStorage) રહે છે. કોઈ સર્વર, ઍનાલિટિક્સ, ટ્રૅકર કે જાહેરાત નથી. પાસવર્ડ, OTP, બૅન્ક વિગતો કે ઓળખની ચકાસણીની માહિતી સેવ ન કરો. બ્રાઉઝર ડેટા સાફ કરવાથી રેકૉર્ડ ભૂંસાઈ શકે છે, તેથી નિયમિત બૅકઅપ એક્સપોર્ટ કરો.',exp:'ડેટા એક્સપોર્ટ (JSON)',imp:'ડેટા ઇમ્પોર્ટ (JSON)',wipe:'બધો ડેટા કાઢી નાખો',wipeQ:'બધો સેવ કરેલો ડેટા કાયમ માટે કાઢી નાખવો છે? આ પાછું નહીં આવે.',wipeQ2:'અંતિમ પુષ્ટિ: ખરેખર બધું કાઢી નાખવું છે?',bad:'ફાઇલ માન્ય નથી.',impQ:'હાલનો ડેટા બદલીને ઇમ્પોર્ટ કરેલો ડેટા રાખવો છે?',ok:'થઈ ગયું.',sens:'કૃપા કરીને પાસવર્ડ, OTP કે બૅન્ક વિગતો સેવ ન કરો.',badPh:'સાચો ફોન નંબર લખો.',req:'નામ જરૂરી છે.',err:'સેવ થઈ શક્યું નહીં (સ્ટોરેજ ભરાયેલું?)',tel:'કૉલ',badDt:'સાચી તારીખ અને સમય પસંદ કરો.',noFu:'નોંધ લખો અને તારીખ પસંદ કરો.'}
+};
+
+/* ===== Built-in reply templates: base sentence per situation + tone greeting/closing, per language ===== */
+const R = {
+ gu:{un:'અત્યારે ફોન ઉપાડવો શક્ય નથી.',la:'કૃપા કરીને થોડી વાર પછી ફરી ફોન કરશો.',ms:'કૃપા કરીને મને સંદેશ મોકલશો, હું જોઈને જવાબ આપીશ.',cb:'હું તમને થોડી વાર પછી ફોન કરીશ.',uk:'માફ કરશો, તમારો નંબર મારી પાસે સેવ નથી. કૃપા કરીને સંદેશમાં તમારું નામ અને કારણ જણાવશો.',bz:'આભાર. હું અત્યારે કામમાં વ્યસ્ત છું. કૃપા કરીને કામ વિશે સંદેશ મોકલશો, સમય મળતાં હું જવાબ આપીશ.'},
+ hi:{un:'अभी फ़ोन उठाना संभव नहीं है।',la:'कृपया थोड़ी देर बाद दोबारा कॉल करें।',ms:'कृपया मुझे संदेश भेज दें, आपके संदेश का जवाब जल्द दिया जाएगा।',cb:'मैं आपको जल्द ही वापस कॉल करूँगा/करूँगी।',uk:'क्षमा करें, यह नंबर मेरे पास सेव नहीं है। कृपया संदेश में अपना नाम और कारण बताएँ।',bz:'धन्यवाद। मैं अभी काम में व्यस्त हूँ। कृपया काम के बारे में संदेश भेजें, समय मिलते ही जवाब दिया जाएगा।'},
+ en:{un:'I’m unable to answer the phone right now.',la:'Please call me again a little later.',ms:'Please send me a message and I’ll reply as soon as I can.',cb:'I will call you back shortly.',uk:'Sorry, I don’t have your number saved. Please message me your name and the reason for your call.',bz:'Thank you for calling. I’m busy with work at the moment. Please send me a message about it and I’ll respond when I’m free.'}
+};
+const TP = { // [greeting, closing]
+ gu:{pol:['નમસ્તે','આભાર.'],fri:['હાય','😊'],pro:['નમસ્કાર','આપની સમજ બદલ આભાર.']},
+ hi:{pol:['नमस्ते','धन्यवाद।'],fri:['हाय','😊'],pro:['नमस्कार','आपके सहयोग के लिए धन्यवाद।']},
+ en:{pol:['Hello','Thank you.'],fri:['Hi','😊'],pro:['Good day','Thank you for your understanding.']}
+};
+const gen = (sit,tone,lang,name) => { const p=TP[lang][tone]; return `${p[0]}${name?' '+name:''}, ${R[lang][sit]} ${p[1]}`; };
+
+/* ================= State & helpers ================= */
+const K='acm_v1', $=s=>document.querySelector(s);
+let S={callers:[],fu:[],lang:'gu',theme:'dark'}, view='home', q='';
+try{ const d=JSON.parse(localStorage.getItem(K)||'{}'); if(d&&typeof d==='object') Object.assign(S,d); }catch(e){}
+const save=()=>{ try{localStorage.setItem(K,JSON.stringify(S));return true}catch(e){toast(t('err'));return false} };
+const t=k=>(L[S.lang]||L.en)[k]??L.en[k]??k;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const loc=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,16); // value for datetime-local
+const fmt=d=>{const x=new Date(d);return isNaN(x)?'':x.toLocaleString(S.lang+'-IN',{dateStyle:'medium',timeStyle:'short'})};
+const SPEECH={gu:'gu-IN',hi:'hi-IN',en:'en-IN'};
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let tt; function toast(m){const e=$('#toast');e.textContent=m;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2200)}
+function cp(txt){ if(!txt)return; (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).catch(()=>{const a=document.createElement('textarea');a.value=txt;document.body.append(a);a.select();document.execCommand('copy');a.remove()}).finally(()=>toast(t('copied'))) }
+const opts=(arr,sel,lab)=>arr.map(v=>`<option value="${v}" ${v===sel?'selected':''}>${lab(v)}</option>`).join('');
+const toneSel=n=>`<label>${t('tone')}<select name="${n}">${opts(['pol','fri','pro'],'pol',v=>t('t'+v))}</select></label>`;
+const langSel=n=>`<label>${t('lang')}<select name="${n}" id="${n}">${opts(['gu','hi','en'],S.lang,v=>({gu:'ગુજરાતી',hi:'हिन्दी',en:'English'})[v])}</select></label>`;
+
+/* ================= Views ================= */
+const dueN=()=>S.fu.filter(f=>!f.done&&new Date(f.at)<=new Date()).length;
+const card=c=>`<div class="card"><b>${esc(c.n)}</b> <span class="pill p${c.p}">${t('p'+c.p)}</span>
+ <div class="mu">${c.ph?`<a href="tel:${esc(c.ph.replace(/[^\d+]/g,''))}" style="color:var(--ac)">📞 ${esc(c.ph)}</a> · `:''}${fmt(c.at)}</div>
+ ${c.r?`<div>${esc(c.r)}</div>`:''}${c.no?`<div class="mu">${esc(c.no)}</div>`:''}
+ <div class="row"><button data-a="edit" data-i="${c.id}">✏️ ${t('edit')}</button><button class="dg" data-a="del" data-i="${c.id}">🗑 ${t('del')}</button></div></div>`;
+const fuCard=f=>{const c=S.callers.find(x=>x.id===f.cid),od=!f.done&&new Date(f.at)<=new Date();
+ return `<div class="card"><b>${esc(f.note)}</b>${c?` <span class="mu">— ${esc(c.n)}</span>`:''}
+ <div class="${od?'p2':'mu'}">${od?'⚠ '+t('over')+' · ':''}${fmt(f.at)}</div>
+ <div class="row">${f.done?'':`<button class="b" data-a="fdone" data-i="${f.id}">✔ ${t('done')}</button>`}<button class="dg" data-a="fdel" data-i="${f.id}">🗑 ${t('del')}</button></div></div>`};
+const empty=()=>`<p class="mu card">${t('empty')}</p>`;
+
+const V={
+home(){const rec=[...S.callers].sort((a,b)=>(b.c||0)-(a.c||0)).slice(0,5);
+ return `<form id="hsf"><input name="q" type="search" placeholder="${t('search')}" aria-label="${t('search')}"></form>
+ <div class="stats" style="margin-top:12px"><div class="card"><b>${S.callers.length}</b>${t('total')}</div><div class="card"><b class="${dueN()?'p2':''}">${dueN()}</b>${t('due')}</div></div>
+ <button class="b" style="width:100%" data-a="add">${t('quick')}</button>
+ <h3>${t('recent')}</h3>${rec.length?rec.map(c=>`<div class="card"><b>${esc(c.n)}</b> <span class="mu">${fmt(c.at)}</span><div>${esc(c.r)}</div><div class="mu">${esc(c.no)}</div></div>`).join(''):empty()}`},
+callers(){const k=q.toLowerCase(),list=S.callers.filter(c=>!k||[c.n,c.ph,c.r,c.no].join(' ').toLowerCase().includes(k)).sort((a,b)=>new Date(b.at)-new Date(a.at));
+ return `<h2>${t('callers')}</h2><input id="cs" type="search" value="${esc(q)}" placeholder="${t('search')}" aria-label="${t('search')}"><button class="b" style="width:100%;margin:10px 0" data-a="add">${t('quick')}</button>${list.length?list.map(card).join(''):empty()}`},
+reply(){return `<h2>💬 ${t('reply')}</h2><p class="mu">${t('local')}</p><form id="rf" class="card">
+ <label>${t('sit')}<select name="rs">${opts(['un','la','ms','cb','uk','bz'],'un',v=>t(v))}</select></label>${toneSel('rt')}${langSel('rl')}
+ <button class="b" style="width:100%" data-a="gen" type="button">${t('gen')}</button>
+ <textarea id="ro" style="margin-top:12px" aria-label="${t('reply')}"></textarea>
+ <div class="row"><button type="button" data-a="copy" data-t="ro">📋 ${t('copy')}</button><button type="button" data-a="clear">${t('clear')}</button>
+ ${'speechSynthesis' in window?`<button type="button" data-a="speak">${t('speak')}</button>`:''}${SR?`<button type="button" data-a="mic">${t('mic')}</button>`:''}</div>
+ ${SR?`<p class="mu">${t('micInfo')}</p>`:''}</form>`},
+follow(){const o=S.fu.filter(f=>!f.done).sort((a,b)=>new Date(a.at)-new Date(b.at)),now=new Date(),od=o.filter(f=>new Date(f.at)<=now),up=o.filter(f=>new Date(f.at)>now),dn=S.fu.filter(f=>f.done);
+ return `<h2>⏰ ${t('follow')}</h2><form id="ff" class="card"><label>${t('fuNote')}<input name="note" maxlength="300" required></label>
+ <label>${t('fuAt')}<input type="datetime-local" name="at" value="${loc(new Date(Date.now()+36e5))}" required></label>
+ <label>${t('fuCaller')}<select name="cid"><option value="">—</option>${S.callers.map(c=>`<option value="${esc(c.id)}">${esc(c.n)}</option>`).join('')}</select></label>
+ <button class="b" style="width:100%">${t('fuAdd')}</button></form>
+ ${'Notification' in window?`<button style="width:100%" data-a="notif">🔔 ${t('notif')}</button><p class="mu">${t('notifInfo')}</p>`:''}
+ <h3>${t('over')}</h3>${od.length?od.map(fuCard).join(''):empty()}<h3>${t('upc')}</h3>${up.length?up.map(fuCard).join(''):empty()}
+ ${dn.length?`<h3>${t('fin')}</h3>${dn.map(fuCard).join('')}`:''}`},
+more(){return `<h2>${t('more')}</h2>`+[['missed','📩'],['auto','🤖'],['priv','🔒']].map(([k,i])=>`<button class="card lk" data-a="go" data-v="${k}">${i} ${t(k)}</button>`).join('')},
+missed(){return `<h2>📩 ${t('missed')}</h2><p class="mu">${t('missedInfo')}</p><form id="mf" class="card">
+ <label>${t('pick')}<select name="cid"><option value="">${t('other')}</option>${S.callers.map(c=>`<option value="${esc(c.id)}">${esc(c.n)}</option>`).join('')}</select></label>
+ <label>${t('name')}<input name="mn" maxlength="80"></label><label>${t('phone')}<input name="mp" type="tel" maxlength="20"></label>
+ <label>${t('msg')}<select name="ms">${opts(['un','cb','ms','la'],'un',v=>t(v))}</select></label>${toneSel('mt')}${langSel('ml')}
+ <textarea id="mo" aria-label="${t('msg')}"></textarea>
+ <div class="row"><button type="button" data-a="copy" data-t="mo">📋 ${t('copy')}</button><a class="g" id="sms" href="#">💬 ${t('sms')}</a><a class="g" id="wa" target="_blank" rel="noopener" href="#">🟢 ${t('wa')}</a>
+ <a class="g" id="tel" href="#">📞 ${t('callb')}</a><button type="button" data-a="mfu">⏰ ${t('addFu')}</button></div></form>`},
+auto(){return `<h2>🤖 ${t('auto')}</h2><div class="card"><div class="mu">${t('autoSt')}</div><p><span class="pill p2">⛔ ${t('unav')}</span></p><p>${t('autoWhy')}</p>
+ <button class="b" style="width:100%" data-a="explore">${t('explore')}</button><p id="ex" class="pre" hidden>${t('exploreInfo')}</p></div>
+ <button style="width:100%" data-a="go" data-v="missed">📩 ${t('missed')}</button>`},
+priv(){return `<h2>🔒 ${t('priv')}</h2><div class="card"><p>${t('privInfo')}</p>
+ <div class="row"><button data-a="exp">⬇ ${t('exp')}</button><button data-a="imp">⬆ ${t('imp')}</button><button class="dg" data-a="wipe">🗑 ${t('wipe')}</button></div>
+ <input type="file" id="fi" accept="application/json,.json" hidden></div>`}
+};
+
+/* ================= Render ================= */
+const NAV=[['home','🏠'],['callers','👥'],['reply','💬'],['follow','⏰'],['more','⋯']];
+function render(){
+ document.documentElement.dataset.t=S.theme; document.documentElement.lang=S.lang; $('#hl').value=S.lang;
+ $('#nav').innerHTML=NAV.map(([k,i])=>`<button data-a="go" data-v="${k}" class="${view===k||(k==='more'&&['missed','auto','priv'].includes(view))?'on':''}"><span>${i}</span>${t(k)}</button>`).join('');
+ $('#v').innerHTML=V[view](); if(view==='missed')mm();
+}
+
+/* ================= Caller form (dialog) ================= */
+function openC(id){const c=S.callers.find(x=>x.id===id)||{};
+ $('#dlg').innerHTML=`<form id="cf" data-id="${esc(id||'')}"><h2>${t(id?'edit':'quick').replace('+ ','')}</h2>
+ <label>${t('name')} *<input name="n" required maxlength="80" value="${esc(c.n)}"></label>
+ <label>${t('phone')}<input name="ph" type="tel" maxlength="20" value="${esc(c.ph)}"></label>
+ <label>${t('when')}<input name="at" type="datetime-local" value="${esc(c.at||loc(new Date()))}"></label>
+ <label>${t('reason')}<input name="r" maxlength="200" value="${esc(c.r)}"></label>
+ <label>${t('prio')}<select name="p">${[0,1,2].map(i=>`<option value="${i}" ${(c.p||0)===i?'selected':''}>${t('p'+i)}</option>`).join('')}</select></label>
+ <label>${t('notes')}<textarea name="no" maxlength="1000">${esc(c.no)}</textarea></label>
+ <p class="mu">🔒 ${t('sens')}</p>
+ <div class="row"><button type="button" data-a="cancel">${t('cancel')}</button><button class="b">${t('save')}</button></div></form>`;
+ $('#dlg').showModal();
+}
+
+/* ================= Missed-call generator ================= */
+function mm(e){const f=$('#mf'); if(!f)return;
+ if(e&&e.target.name==='cid'){const c=S.callers.find(x=>x.id===f.cid.value); if(c){f.mn.value=c.n;f.mp.value=c.ph||''}}
+ const txt=gen(f.ms.value,f.mt.value,f.ml.value,f.mn.value.trim()), ph=f.mp.value.replace(/[^\d+]/g,''), dg=ph.replace(/\D/g,'');
+ $('#mo').value=txt; $('#sms').href=ph?`sms:${ph}?body=${encodeURIComponent(txt)}`:'#';
+ $('#wa').href=`https://wa.me/${dg}?text=${encodeURIComponent(txt)}`; $('#tel').href=ph?`tel:${ph}`:'#';
+}
+
+/* ================= Actions ================= */
+const A={
+ go(b){view=b.dataset.v;q='';render();scrollTo(0,0)},
+ theme(){S.theme=S.theme==='dark'?'light':'dark';save();render()},
+ add(){openC()}, edit(b){openC(b.dataset.i)}, cancel(){$('#dlg').close()},
+ del(b){if(confirm(t('delQ'))){S.callers=S.callers.filter(c=>c.id!==b.dataset.i);save();render()}},
+ fdone(b){const f=S.fu.find(x=>x.id===b.dataset.i);if(f){f.done=true;save();render()}},
+ fdel(b){if(confirm(t('delQ'))){S.fu=S.fu.filter(x=>x.id!==b.dataset.i);save();render()}},
+ gen(){const f=$('#rf');$('#ro').value=gen(f.rs.value,f.rt.value,f.rl.value,'')},
+ copy(b){cp($('#'+b.dataset.t).value)}, clear(){$('#ro').value=''},
+ speak(){const x=$('#ro').value.trim();if(!x)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(x);u.lang=SPEECH[$('#rl').value];speechSynthesis.speak(u)},
+ mic(){ // microphone is touched only after this explicit tap
+  try{const r=new SR();r.lang=SPEECH[$('#rl').value];r.onresult=ev=>{const o=$('#ro');o.value+=(o.value?' ':'')+ev.results[0][0].transcript};r.onerror=()=>toast('🎤 ✖');r.start()}catch(e){toast('🎤 ✖')}},
+ notif(){Notification.requestPermission().then(p=>toast('🔔 '+p))},
+ explore(){const e=$('#ex');e.hidden=!e.hidden},
+ mfu(){const f=$('#mf'),n=f.mn.value.trim()||f.mp.value.trim();
+  S.fu.push({id:uid(),at:loc(new Date(Date.now()+36e5)),note:'📞 '+n,cid:f.cid.value,done:false});if(save()){toast(t('ok'))}},
+ exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({app:'acm',v:1,callers:S.callers,fu:S.fu},null,2)],{type:'application/json'}));
+  a.download='ai-call-manager-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1e3)},
+ imp(){$('#fi').click()},
+ wipe(){if(confirm(t('wipeQ'))&&confirm(t('wipeQ2'))){S.callers=[];S.fu=[];save();render();toast(t('ok'))}}
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b&&A[b.dataset.a])A[b.dataset.a](b)});
+
+document.addEventListener('submit',e=>{e.preventDefault();const f=e.target;
+ if(f.id==='hsf'){q=f.q.value;view='callers';render()}
+ else if(f.id==='cf'){
+  const n=f.n.value.trim(),ph=f.ph.value.trim(),at=f.at.value,txt=f.r.value+' '+f.no.value;
+  if(!n)return toast(t('req'));
+  if(ph&&(!/^\+?[\d\s()-]{5,20}$/.test(ph)||ph.replace(/\D/g,'').length<5))return toast(t('badPh'));
+  if(at&&isNaN(new Date(at)))return toast(t('badDt'));
+  if(/\b(otp|password|passcode|cvv|pin)\b/i.test(txt))return toast(t('sens')); // block sensitive data
+  const rec={id:f.dataset.id||uid(),n,ph,at:at||loc(new Date()),r:f.r.value.trim(),p:+f.p.value,no:f.no.value.trim(),c:Date.now()};
+  const i=S.callers.findIndex(x=>x.id===rec.id); if(i>=0){rec.c=S.callers[i].c;S.callers[i]=rec}else S.callers.push(rec);
+  if(save()){$('#dlg').close();render()}
+ }else if(f.id==='ff'){
+  const note=f.note.value.trim(); if(!note||isNaN(new Date(f.at.value)))return toast(t('noFu'));
+  S.fu.push({id:uid(),at:f.at.value,note,cid:f.cid.value,done:false});if(save())render();
+ }
+});
+document.addEventListener('input',e=>{
+ if(e.target.id==='cs'){q=e.target.value;const p=e.target.selectionStart;render();const s=$('#cs');s.focus();s.setSelectionRange(p,p)}
+ else if(e.target.closest('#mf'))mm(e);
+});
+document.addEventListener('change',e=>{
+ if(e.target.id==='hl'){S.lang=e.target.value;save();render()}
+ else if(e.target.closest('#mf'))mm(e);
+ else if(e.target.id==='fi'&&e.target.files[0]){importFile(e.target.files[0]);e.target.value=''}
+});
+
+/* ================= Import with validation ================= */
+function importFile(file){const r=new FileReader();r.onload=()=>{try{
+ const d=JSON.parse(r.result); if(!d||d.app!=='acm'||!Array.isArray(d.callers)||!Array.isArray(d.fu))throw 0;
+ const cs=d.callers.map(c=>{if(!c||typeof c.n!=='string'||!c.n.trim())throw 0;return{id:String(c.id||uid()),n:c.n.slice(0,80),ph:String(c.ph||'').slice(0,20),at:String(c.at||'').slice(0,16),r:String(c.r||'').slice(0,200),p:[0,1,2].includes(+c.p)?+c.p:0,no:String(c.no||'').slice(0,1000),c:+c.c||Date.now()}});
+ const fs=d.fu.map(f=>{if(!f||typeof f.note!=='string'||isNaN(new Date(f.at)))throw 0;return{id:String(f.id||uid()),at:String(f.at).slice(0,16),note:f.note.slice(0,300),cid:String(f.cid||''),done:!!f.done}});
+ if(!confirm(t('impQ')))return; S.callers=cs;S.fu=fs;save();render();toast(t('ok'));
+}catch(e){toast(t('bad'))}};r.readAsText(file)}
+
+/* ================= Due follow-up notifications (only while the app is open) ================= */
+setInterval(()=>{let ch=0;S.fu.forEach(f=>{if(!f.done&&!f.nf&&new Date(f.at)<=Date.now()){f.nf=1;ch=1;
+ if('Notification' in window&&Notification.permission==='granted'){
+  if(navigator.serviceWorker)navigator.serviceWorker.ready.then(r=>r.showNotification('AI Call Manager',{body:f.note})).catch(()=>{});
+  else try{new Notification('AI Call Manager',{body:f.note})}catch(e){}}}});
+ if(ch){save();if(view==='home')render()}},30000);
+
+/* ================= Start ================= */
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))
+ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "AI Call Manager",
+  "short_name": "Call Manager",
+  "description": "Private, offline call notes, follow-ups and reply templates in Gujarati, Hindi and English.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1026",
+  "theme_color": "#0f1630",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%237c5cff'/%3E%3Ctext x='50' y='70' font-size='56' text-anchor='middle'%3E%F0%9F%93%9E%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
